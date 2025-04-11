@@ -38,7 +38,7 @@ export function setupKeyListeners() {
 }
 
 // Handle player movement
-export function handleMovement(pill1: THREE.Mesh) {
+export function handleMovement(pill1: THREE.Object3D) {
     const direction = new THREE.Vector3(0, 0, 0); // Movement vector
 
     // Move forward (W key)
@@ -67,7 +67,7 @@ export function handleMovement(pill1: THREE.Mesh) {
 }
 
 // Handle rotation (turning left or right)
-export function handleRotation(pill1: THREE.Mesh) {
+export function handleRotation(pill1: THREE.Object3D) {
     // Rotate left (Q key)
     if (keysPressed.Q) {
         pill1.rotation.y += rotationSpeed;

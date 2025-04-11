@@ -17,5 +17,6 @@ export function setupMouseLook(player: THREE.Object3D, camera: THREE.Camera) {
     pitch -= movementY * 0.002;
     pitch = Math.max(-pitchLimit, Math.min(pitchLimit, pitch));
     camera.rotation.x = pitch;
+   
   });
 }
