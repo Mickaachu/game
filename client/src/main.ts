@@ -33,7 +33,7 @@ let pill1: THREE.Object3D | null = null;  // Initialize pill1 as null
     if (pill1) {
         scene.add(pill1);
         pill1.add(camera);
-        camera.position.set(0, 0.4, -1);
+        camera.position.set(0, 1 , 2);
 
         // Call the setup functions after pill1 is initialized
         setupMouseLook(pill1, camera);
@@ -47,10 +47,7 @@ let pill1: THREE.Object3D | null = null;  // Initialize pill1 as null
 })();
 
 const otherPlayers: {[key: string]: THREE.Object3D} = {};
-
-
-//movements listener
-
+const playerRotation = Math.PI;
 
 
 //environment:
@@ -94,14 +91,17 @@ socket.on('newPlayer', async (data) => {
     }
 });
 
+
 // main.ts
 socket.on('playerMoved', async (data) => {
     if (data.id === socket.id) return;  // Don't update your own movement
 
     try {
         if (otherPlayers[data.id]) {
-            // Update the position and rotation of the player in the scene
+            
             otherPlayers[data.id].position.set(data.position.x, data.position.y, data.position.z);
+      
+            // Apply world-space rotation (send and receive rotation in world space)
             otherPlayers[data.id].rotation.set(data.rotation.x, data.rotation.y, data.rotation.z);
         }
     } catch (error) {
@@ -124,16 +124,18 @@ function sendPlayerMovement() {
     if (!pill1) return;
     const position = pill1.position;
     const rotation = pill1.rotation;
+
     if (!position.equals(lastPosition) || !rotation.equals(lastRotation)) {
+        // Send position and rotation in world coordinates to other players
         socket.emit('move', {
-            x: position.x,
-            y: position.y,
-            z: position.z,
-            rotation: {
-                x: rotation.x,
-                y: rotation.y,
-                z: rotation.z
-            }
+        x: position.x,
+        y: position.y,
+        z: position.z,
+        rotation: {
+            x: rotation.x,
+            y: rotation.y,
+            z: rotation.z,
+        }
         });
 
         lastPosition.copy(position);

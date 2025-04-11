@@ -16,8 +16,14 @@ export async function createPlayer({ x, y, z }: Player): Promise<THREE.Object3D>
       '/player1.glb', // path to your GLB/GLTF file
       (gltf) => {
         const model = gltf.scene;
+        console.log(gltf.scene);
         model.position.set(x, y, z);
-        model.scale.set(1, 0.8, 1); // Adjust scale as needed
+        model.scale.set(1, 10, 1); // Adjust scale as needed
+        
+        // Rotate the model 180 degrees on the Y-axis to face backward
+        model.children[0].rotation.z = Math.PI;
+        const axes = new THREE.AxesHelper(1);
+      model.add(axes); // Add the axes helper to the model for debugging
         resolve(model);
       },
       undefined,
@@ -46,4 +52,3 @@ export function setupCameraRelativeToPlayer(camera: THREE.Camera, player: THREE.
 
   return updateCameraPosition;
 }
-
