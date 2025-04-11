@@ -61,7 +61,7 @@ export function handleMovement(pill1: THREE.Mesh) {
         direction.x += movementSpeed;
     }
 
-    // Apply the movement to pill1's position
+   
     direction.applyQuaternion(pill1.quaternion);
     pill1.position.add(direction) // Rotate the direction vector by the pill's rotation
 }

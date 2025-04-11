@@ -3,7 +3,7 @@ import camera from '../util/lib/camera';
 import scene from '../util/lib/scene';
 import { createPlayer } from '../util/components/Player/player';
 import {createLights} from '../util/lib/lights';
-
+import { setupMouseLook } from '../util/components/Player/MouseLook';
 
 import { setupKeyListeners, handleMovement, handleRotation } from '../util/components/Player/Movement';
 
@@ -31,12 +31,11 @@ scene.add(pill2);
 pill1.add(camera)
 
 camera.position.set(0, 0.4, -1);
-camera.lookAt(pill1.position.clone().add(new THREE.Vector3(0, 0.4, -1)));
 
 
 //movements listener
 setupKeyListeners();
-
+setupMouseLook(pill1, camera);
 
 // light
 const lights = createLights();
@@ -55,10 +54,20 @@ scene.add(planeMesh);
 planeMesh.rotation.x = -0.5 * Math.PI;
 
 
+// pointer lock
+document.body.addEventListener('click', () => {
+    renderer.domElement.requestPointerLock();
+  });
+  
+
+// mouselook
+
+
 
 function animate() {
     handleMovement(pill1);
     handleRotation(pill1);
+    
     renderer.render(scene, camera);
 }
 
