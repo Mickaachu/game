@@ -1,74 +1,55 @@
 import * as THREE from 'three';
+import { io } from 'socket.io-client';
+
 import camera from '../util/lib/camera';
 import scene from '../util/lib/scene';
 import { createPlayer } from '../util/components/Player/player';
-import {createLights} from '../util/lib/lights';
-import { setupMouseLook } from '../util/components/Player/MouseLook';
-import { setupKeyListeners, handleMovement, handleRotation } from '../util/components/Player/Movement';
-import { io } from 'socket.io-client';
 import { setupEnvironment } from '../util/components/Environment/environment';
-const socket = io('http://localhost:3000');
+import { setupPlayerController, updatePlayerController } from '../util/components/Player/PlayerController';
 
+const socket = io('http://localhost:3000');
 
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-//helpers
-const axesHelper = new THREE.AxesHelper(5);
-scene.add(axesHelper);
+// Helpers
+scene.add(new THREE.AxesHelper(5));
+scene.add(new THREE.GridHelper(15, 50));
 
-const gridHelper = new THREE.GridHelper(15, 50);
-scene.add(gridHelper);
+// Add environment
+setupEnvironment(scene, renderer);
 
+// Pointer lock on click
+document.body.addEventListener('click', () => {
+    renderer.domElement.requestPointerLock();
+});
 
-
-//player 
-let pill1: THREE.Object3D | null = null;  // Initialize pill1 as null
+// Player
+let pill1: THREE.Object3D | null = null;
+const otherPlayers: { [key: string]: THREE.Object3D } = {};
 
 (async () => {
-    // Ensure pill1 is created asynchronously
     pill1 = await createPlayer({ x: 0, y: 0.5, z: 0 });
-    
+
     if (pill1) {
         scene.add(pill1);
         pill1.add(camera);
-        camera.position.set(0, 1 , 2);
+        camera.position.set(0, 1.5, -1); // Third-person position
 
-        // Call the setup functions after pill1 is initialized
-        setupMouseLook(pill1, camera);
-        setupKeyListeners();
-
-        // Start animation loop
+        setupPlayerController(pill1, camera); // Unified movement + mouse look
         renderer.setAnimationLoop(animate);
     } else {
-        console.error("Failed to create pill1");
+        console.error("Failed to create local player.");
     }
 })();
 
-const otherPlayers: {[key: string]: THREE.Object3D} = {};
-const playerRotation = Math.PI;
-
-
-//environment:
-setupEnvironment(scene, renderer);
-
-
-
-
-// pointer lock
-document.body.addEventListener('click', () => {
-    renderer.domElement.requestPointerLock();
-  });
-  
-
-//synch players
+// Socket: initialize all other players
 socket.on('initialize', async (players) => {
     for (const id in players) {
-        if (id === socket.id) continue;  // Avoid adding yourself again
+        if (id === socket.id) continue;
 
         try {
-            // Wait for the player model to load before adding it to the scene
             const player = await createPlayer(players[id]);
             scene.add(player);
             otherPlayers[id] = player;
@@ -77,12 +58,12 @@ socket.on('initialize', async (players) => {
         }
     }
 });
-// main.ts
+
+// Socket: new player joined
 socket.on('newPlayer', async (data) => {
-    if (data.id === socket.id) return;  // Avoid adding yourself again
-    
+    if (data.id === socket.id) return;
+
     try {
-        // Wait for the player model to load before adding it to the scene
         const player = await createPlayer(data.position);
         scene.add(player);
         otherPlayers[data.id] = player;
@@ -91,51 +72,47 @@ socket.on('newPlayer', async (data) => {
     }
 });
 
+// Socket: update position and rotation of remote players
+socket.on('playerMoved', (data) => {
+    if (data.id === socket.id) return;
 
-// main.ts
-socket.on('playerMoved', async (data) => {
-    if (data.id === socket.id) return;  // Don't update your own movement
-
-    try {
-        if (otherPlayers[data.id]) {
-            
-            otherPlayers[data.id].position.set(data.position.x, data.position.y, data.position.z);
-      
-            // Apply world-space rotation (send and receive rotation in world space)
-            otherPlayers[data.id].rotation.set(data.rotation.x, data.rotation.y, data.rotation.z);
-        }
-    } catch (error) {
-        console.error("Error updating player movement for", data.id, ":", error);
+    const other = otherPlayers[data.id];
+    console.log(other)
+    if (other) {
+        other.position.set(data.position.x, data.position.y, data.position.z);
+        other.rotation.set(data.rotation.x, data.rotation.y, data.rotation.z);
     }
 });
 
-socket.on('removePlayer' , (id) => {
-    if(otherPlayers[id]) {
-        scene.remove(otherPlayers[id]);
+// Socket: remove player
+socket.on('removePlayer', (id) => {
+    const player = otherPlayers[id];
+    if (player) {
+        scene.remove(player);
         delete otherPlayers[id];
     }
-})
+});
 
-
+// Send position/rotation if changed
 let lastPosition = new THREE.Vector3();
 let lastRotation = new THREE.Euler();
 
 function sendPlayerMovement() {
     if (!pill1) return;
+
     const position = pill1.position;
     const rotation = pill1.rotation;
 
     if (!position.equals(lastPosition) || !rotation.equals(lastRotation)) {
-        // Send position and rotation in world coordinates to other players
         socket.emit('move', {
-        x: position.x,
-        y: position.y,
-        z: position.z,
-        rotation: {
-            x: rotation.x,
-            y: rotation.y,
-            z: rotation.z,
-        }
+            x: position.x,
+            y: position.y,
+            z: position.z,
+            rotation: {
+                x: rotation.x,
+                y: rotation.y,
+                z: rotation.z,
+            }
         });
 
         lastPosition.copy(position);
@@ -143,15 +120,13 @@ function sendPlayerMovement() {
     }
 }
 
+// Animate loop
 function animate() {
     if (pill1) {
-        handleMovement(pill1);
-        handleRotation(pill1);
-        pill1.position.y = 0.5; 
+        updatePlayerController(); // Handles movement + mouse look
+        pill1.position.y = 0.5;
+        sendPlayerMovement();
     }
-    
-    sendPlayerMovement();
+
     renderer.render(scene, camera);
 }
-
-renderer.setAnimationLoop(animate);
