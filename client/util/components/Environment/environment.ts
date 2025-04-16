@@ -1,7 +1,8 @@
 // environment.ts
 import * as THREE from 'three';
+import * as CANNON from 'cannon';
 
-export function setupEnvironment(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
+export function setupEnvironment(scene: THREE.Scene, renderer: THREE.WebGLRenderer, world: CANNON.World) {
     // Set sky background color
     scene.background = new THREE.Color(0xaec6cf); // sky blue
 
@@ -26,4 +27,13 @@ export function setupEnvironment(scene: THREE.Scene, renderer: THREE.WebGLRender
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     scene.add(ground);
+    
+    const groundBody = new CANNON.Body({
+        mass: 0, // Static body
+        position: new CANNON.Vec3(0, 0, 0),
+        shape: new CANNON.Plane()
+    })
+
+    groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0); 
+    world.addBody(groundBody)
 }

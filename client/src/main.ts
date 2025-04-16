@@ -5,20 +5,30 @@ import camera from '../util/lib/camera';
 import scene from '../util/lib/scene';
 import { createPlayer } from '../util/components/Player/player';
 import { setupEnvironment } from '../util/components/Environment/environment';
-import { setupPlayerController, updatePlayerController } from '../util/components/Player/PlayerController';
+import { setupPlayerController, updatePlayerController, } from '../util/components/Player/PlayerController';
+import * as CANNON from 'cannon';
+
 
 const socket = io('http://localhost:3000');
 
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
+
 document.body.appendChild(renderer.domElement);
+
+//world setup
+const world = new CANNON.World();
+world.gravity.set(0, -9.82, 0); 
+
+
+
 
 // Helpers
 scene.add(new THREE.AxesHelper(5));
 scene.add(new THREE.GridHelper(15, 50));
 
 // Add environment
-setupEnvironment(scene, renderer);
+setupEnvironment(scene, renderer,world);
 
 // Pointer lock on click
 document.body.addEventListener('click', () => {
@@ -27,11 +37,18 @@ document.body.addEventListener('click', () => {
 
 // Player
 let pill1: THREE.Object3D | null = null;
+let pillBody: CANNON.Body ;
 const otherPlayers: { [key: string]: THREE.Object3D } = {};
 
 (async () => {
     pill1 = await createPlayer({ x: 0, y: 0.5, z: 0 });
-
+    const shape = new CANNON.Sphere(0.5); // Adjust the shape to match your player model
+    pillBody = new CANNON.Body({
+        mass: 1,
+        shape,
+        position: new CANNON.Vec3(0, 0.5, 0), // Initial position
+    })
+    world.addBody(pillBody); // Add the body to the world
     if (pill1) {
         scene.add(pill1);
         pill1.add(camera);
@@ -119,14 +136,16 @@ function sendPlayerMovement() {
         lastRotation.copy(rotation);
     }
 }
-
+const timestep = 1 / 60; 
 // Animate loop
 function animate() {
-    if (pill1) {
-        updatePlayerController(); // Handles movement + mouse look
-        pill1.position.y = 0.5;
+    world.step(timestep);
+
+    if (pill1 && pillBody) {
+        pill1.position.copy(pillBody.position as unknown as THREE.Vector3); // Types don't match perfectly
+        pill1.quaternion.copy(pillBody.quaternion as unknown as THREE.Quaternion);
         sendPlayerMovement();
     }
-
+    updatePlayerController(); //
     renderer.render(scene, camera);
 }
