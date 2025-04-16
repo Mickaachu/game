@@ -20,9 +20,6 @@ document.body.appendChild(renderer.domElement);
 const world = new CANNON.World();
 world.gravity.set(0, -9.82, 0); 
 
-
-
-
 // Helpers
 scene.add(new THREE.AxesHelper(5));
 scene.add(new THREE.GridHelper(15, 50));
@@ -54,7 +51,7 @@ const otherPlayers: { [key: string]: THREE.Object3D } = {};
         pill1.add(camera);
         camera.position.set(0, 1.5, -1); // Third-person position
 
-        setupPlayerController(pill1, camera); // Unified movement + mouse look
+        setupPlayerController(pill1, camera,); // Unified movement + mouse look
         renderer.setAnimationLoop(animate);
     } else {
         console.error("Failed to create local player.");
@@ -137,15 +134,17 @@ function sendPlayerMovement() {
     }
 }
 const timestep = 1 / 60; 
+
 // Animate loop
 function animate() {
+    updatePlayerController();
     world.step(timestep);
 
-    if (pill1 && pillBody) {
-        pill1.position.copy(pillBody.position as unknown as THREE.Vector3); // Types don't match perfectly
+    if (pill1) {
+        pill1.position.copy(pillBody.position as unknown as THREE.Vector3);
         pill1.quaternion.copy(pillBody.quaternion as unknown as THREE.Quaternion);
         sendPlayerMovement();
     }
-    updatePlayerController(); //
+
     renderer.render(scene, camera);
 }
