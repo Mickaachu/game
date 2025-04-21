@@ -1,16 +1,17 @@
 // util/components/Player/PlayerController.ts
 
 import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
 
 const keysPressed: { [key: string]: boolean } = {};
 let pitch = 0;
 const pitchLimit = Math.PI / 2.5;
-const movementSpeed = 0.05;
+const movementSpeed = 4
 
-let player: THREE.Object3D;
+let player: CANNON.Body;
 let camera: THREE.Camera;
 
-export function setupPlayerController(playerObj: THREE.Object3D, cam: THREE.Camera) {
+export function setupPlayerController(playerObj: CANNON.Body, cam: THREE.Camera) {
     player = playerObj;
     camera = cam;
 
@@ -24,7 +25,9 @@ export function setupPlayerController(playerObj: THREE.Object3D, cam: THREE.Came
         const movementY = event.movementY || 0;
 
         // Yaw (left/right): rotate player
-        player.rotation.y -= movementX * 0.002;
+        const quaternion = new CANNON.Quaternion();
+        quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -movementX * 0.002);
+        player.quaternion = player.quaternion.mult(quaternion);
 
         // Pitch (up/down): rotate camera
         pitch -= movementY * 0.002;
@@ -33,16 +36,28 @@ export function setupPlayerController(playerObj: THREE.Object3D, cam: THREE.Came
     });
 }
 
+
+
 export function updatePlayerController() {
     if (!player) return;
 
     const direction = new THREE.Vector3();
 
-    if (keysPressed['w']) direction.z -= movementSpeed;
-    if (keysPressed['s']) direction.z += movementSpeed;
-    if (keysPressed['a']) direction.x -= movementSpeed;
-    if (keysPressed['d']) direction.x += movementSpeed;
+    const isRunning = keysPressed['shift']; 
+    const currentSpeed = isRunning ? movementSpeed * 2 : movementSpeed;
 
-    direction.applyQuaternion(player.quaternion);
-    player.position.add(direction);
+    if (keysPressed['w']) direction.z -= 1;
+    if (keysPressed['s']) direction.z += 1;
+    if (keysPressed['a']) direction.x -= 1;
+    if (keysPressed['d']) direction.x += 1;
+
+    direction.normalize().applyQuaternion(new THREE.Quaternion(
+        player.quaternion.x,
+        player.quaternion.y,
+        player.quaternion.z,
+        player.quaternion.w,
+    ));
+
+    player.velocity.x = direction.x * currentSpeed;
+    player.velocity.z = direction.z * currentSpeed;
 }
